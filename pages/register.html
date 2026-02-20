@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Register | GRP</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+
+<body>
+
+  <div class="auth-container">
+    <div class="card p-4 border-gradient">
+      <div class="text-center mb-4">
+        <h1 class="text-gradient">Create Account</h1>
+        <p class="text-muted">Join our speech transcription platform</p>
+      </div>
+
+      <!-- Notice -->
+      <div class="alert alert-warning">
+        Registration is not enabled yet in this frontend build.
+        Please use credentials provided by your admin, or sign in.
+      </div>
+
+      <form id="register-form" class="transition" novalidate>
+        <!-- Account / identity -->
+        <div class="row">
+          <div class="col-12 mb-3">
+            <label for="display_name" class="form-label">Display name</label>
+            <input type="text" class="form-control" id="display_name" placeholder="How should we refer to you?"
+              autocomplete="nickname">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="first_name" class="form-label">First name</label>
+            <input type="text" class="form-control" id="first_name" required placeholder="First name"
+              autocomplete="given-name">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="last_name" class="form-label">Last name</label>
+            <input type="text" class="form-control" id="last_name" required placeholder="Last name"
+              autocomplete="family-name">
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="email" required placeholder="Enter your email"
+            autocomplete="email">
+        </div>
+        <div class="mb-3">
+          <label for="phone" class="form-label">Phone number</label>
+          <input type="tel" class="form-control" id="phone" placeholder="e.g., +1 555 123 4567" autocomplete="tel"
+            pattern="^[+0-9().\\-\\s]{7,}$" inputmode="tel">
+          <div class="form-text">Include country code if outside the US.</div>
+        </div>
+
+        <!-- Address -->
+        <div class="mb-3">
+          <label for="address_line1" class="form-label">Address line 1</label>
+          <input type="text" class="form-control" id="address_line1" required
+            placeholder="Street address, P.O. box, company name" autocomplete="address-line1">
+        </div>
+        <div class="mb-3">
+          <label for="address_line2" class="form-label">
+            Address line 2 <span class="text-muted">(optional)</span>
+          </label>
+          <input type="text" class="form-control" id="address_line2"
+            placeholder="Apartment, suite, unit, building, floor, etc." autocomplete="address-line2">
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="city" class="form-label">City</label>
+            <input type="text" class="form-control" id="city" required placeholder="City" autocomplete="address-level2">
+          </div>
+          <div class="col-md-3 mb-3">
+            <label for="state" class="form-label">State/Province</label>
+            <input type="text" class="form-control" id="state" required placeholder="State"
+              autocomplete="address-level1">
+          </div>
+          <div class="col-md-3 mb-3">
+            <label for="postal_code" class="form-label">Postal code</label>
+            <input type="text" class="form-control" id="postal_code" required placeholder="ZIP/Postal code"
+              autocomplete="postal-code">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="country" class="form-label">Country</label>
+          <input type="text" class="form-control" id="country" required placeholder="Country"
+            autocomplete="country-name">
+        </div>
+
+        <!-- Auth -->
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" required minlength="8"
+            placeholder="Create a password (min 8 characters)" autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-3 pulse" disabled>
+          Create Account (Disabled)
+        </button>
+
+        <div class="mt-3 text-muted small">
+          Registration will be enabled once the backend provides a registration endpoint.
+        </div>
+      </form>
+
+      <div class="mt-4 text-center">
+        <p class="mb-0">Already have an account? <a href="login.html">Login here</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // prevent accidental submit
+    document.getElementById("register-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+    });
+  </script>
+
+</body>
+
+</html>

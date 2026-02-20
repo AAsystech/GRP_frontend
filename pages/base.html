@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GRP</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+  <!-- Custom CSS (adjust filename if yours differs) -->
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+
+<body class="d-flex flex-column min-vh-100 bg-dark text-light">
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+    <div class="container">
+      <a class="navbar-brand" href="home.html">
+        <i class="bi bi-mic me-2"></i>GRP
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto" id="nav-links">
+          <!-- populated by JS -->
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="flex-grow-1 container my-4">
+    <div class="text-muted">
+      This is a static base layout page. Pages like <code>login.html</code> and <code>dashboard.html</code> are now
+      standalone.
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-3 mt-auto border-top border-secondary">
+    <div class="container text-center">
+      <p class="mb-0" id="footer-year"></p>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Navbar logic -->
+  <script type="module">
+    import { getToken, getUser, clearAuth } from "../assets/js/auth.js";
+
+    // footer year
+    document.getElementById("footer-year").textContent =
+      `GRP - Speech to Text Transcription © ${new Date().getFullYear()}`;
+
+    const nav = document.getElementById("nav-links");
+    const token = getToken();
+    const user = getUser();
+
+    function liLink(href, label) {
+      const li = document.createElement("li");
+      li.className = "nav-item";
+      const a = document.createElement("a");
+      a.className = "nav-link";
+      a.href = href;
+      a.textContent = label;
+      li.appendChild(a);
+      return li;
+    }
+
+    if (token) {
+      // Logged in nav
+      nav.appendChild(liLink("home.html", "Home"));
+      nav.appendChild(liLink("dashboard.html", "Dashboard"));
+
+      const li = document.createElement("li");
+      li.className = "nav-item";
+      const btn = document.createElement("button");
+      btn.className = "btn btn-outline-secondary ms-2";
+      btn.textContent = user?.full_name ? `Logout (${user.full_name})` : "Logout";
+      btn.addEventListener("click", () => {
+        clearAuth();
+        window.location.href = "login.html";
+      });
+      li.appendChild(btn);
+      nav.appendChild(li);
+    } else {
+      // Logged out nav
+      nav.appendChild(liLink("home.html", "Home"));
+      nav.appendChild(liLink("login.html", "Login"));
+      nav.appendChild(liLink("register.html", "Register"));
+    }
+  </script>
+</body>
+
+</html>
