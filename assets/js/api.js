@@ -1,6 +1,6 @@
 // GRP_frontend/assets/js/api.js
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://grp-backend.onrender.com";
 
 function getToken() {
     return localStorage.getItem("grp_access_token");
