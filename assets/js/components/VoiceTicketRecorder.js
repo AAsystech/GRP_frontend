@@ -1,46 +1,53 @@
-class VoiceTicketRecorder {
-    constructor(containerId) {
+// GRP_frontend/assets/js/components/VoiceTicketRecorder.js
+import { api } from "../api.js"; // <-- adjust path if needed
+
+export class VoiceTicketRecorder {
+    constructor(containerId, options = {}) {
         this.container = document.getElementById(containerId);
+        if (!this.container) {
+            throw new Error(`VoiceTicketRecorder: container "${containerId}" not found`);
+        }
+
+        // Options
+        this.uploadPath = options.uploadPath || "/api/upload"; // backend route
+        this.auth = options.auth ?? true; // send bearer token by default
+        this.fieldName = options.fieldName || "audio"; // multipart field name expected by backend
+
+        // State
         this.mediaRecorder = null;
+        this.stream = null;
         this.audioChunks = [];
         this.recording = false;
 
-        // Create the recorder UI
         this.createUI();
         this.bindEvents();
     }
 
     createUI() {
         this.container.innerHTML = `
-            <div class="card">
-                <div class="card-body text-center">
-                    <button id="recordButton" class="btn btn-danger btn-lg mb-3">
-                        <i class="bi bi-mic" style="font-size: 2rem;"></i>
-                    </button>
-                    <div>
-                        <span id="recordingText">Ready to record</span>
-                        <div id="recordingSpinner" class="spinner-border spinner-border-sm d-none" role="status">
-                            <span class="visually-hidden">Processing...</span>
-                        </div>
-                    </div>
-                    <div id="transcriptContainer" class="mt-3 text-start d-none">
-                        <h6>Transcript:</h6>
-                        <p id="transcriptText" class="mb-0"></p>
-                    </div>
-                </div>
-            </div>
-        `;
+      <div class="card">
+        <div class="card-body text-center">
+          <button id="recordButton" class="btn btn-danger btn-lg mb-3" type="button">
+            <i class="bi bi-mic" style="font-size: 2rem;"></i>
+          </button>
 
-        // Initialize element references
-        this.recordButton = this.container.querySelector('#recordButton');
-        this.recordingText = this.container.querySelector('#recordingText');
-        this.recordingSpinner = this.container.querySelector('#recordingSpinner');
-        this.transcriptContainer = this.container.querySelector('#transcriptContainer');
-        this.transcriptText = this.container.querySelector('#transcriptText');
+          <div>
+            <span id="recordingText">Ready to record</span>
+            <div id="recordingSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status">
+              <span class="visually-hidden">Uploading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+        this.recordButton = this.container.querySelector("#recordButton");
+        this.recordingText = this.container.querySelector("#recordingText");
+        this.recordingSpinner = this.container.querySelector("#recordingSpinner");
     }
 
     bindEvents() {
-        this.recordButton.addEventListener('click', () => this.toggleRecording());
+        this.recordButton.addEventListener("click", () => this.toggleRecording());
     }
 
     async toggleRecording() {
@@ -53,103 +60,135 @@ class VoiceTicketRecorder {
 
     async startRecording() {
         try {
-            // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream);
+            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            this.mediaRecorder.ondataavailable = event => {
-                this.audioChunks.push(event.data);
+            const options = this.getSupportedRecorderOptions();
+            this.mediaRecorder = new MediaRecorder(this.stream, options);
+
+            this.audioChunks = [];
+
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    this.audioChunks.push(event.data);
+                }
             };
 
             this.mediaRecorder.onstop = async () => {
-                await this.processRecording(stream);
+                try {
+                    await this.uploadRecording();
+                    this.flashMessage("Audio uploaded successfully!", "success");
+                } catch (err) {
+                    console.error("Upload error:", err);
+                    this.flashMessage(err?.message || "Audio upload failed.", "danger");
+                } finally {
+                    this.cleanupStream();
+                    this.setReadyUI();
+                }
             };
 
-            // Start recording
             this.mediaRecorder.start();
             this.recording = true;
-            this.recordButton.classList.add('recording');
-            this.recordingText.textContent = 'Recording...';
-            this.recordButton.innerHTML = '<i class="bi bi-stop-fill" style="font-size: 2rem;"></i>';
+            this.setRecordingUI();
         } catch (err) {
-            console.error('Error accessing microphone:', err);
-            this.flashMessage('Microphone access denied. Please enable microphone permissions.', 'danger');
+            console.error("Mic access error:", err);
+            this.flashMessage(
+                "Microphone access denied. Please enable microphone permissions.",
+                "danger"
+            );
+            this.cleanupStream();
+            this.setReadyUI();
         }
     }
 
     stopRecording() {
-        this.mediaRecorder.stop();
+        if (!this.mediaRecorder) return;
+
         this.recording = false;
-        this.recordButton.classList.remove('recording');
-        this.recordButton.innerHTML = '<i class="bi bi-mic" style="font-size: 2rem;"></i>';
+
+        // Switch UI immediately to show we're finishing up
+        this.recordingSpinner.classList.remove("d-none");
+        this.recordingText.textContent = "Uploading audio...";
+
+        if (this.mediaRecorder.state !== "inactive") {
+            this.mediaRecorder.stop();
+        }
     }
 
-    async processRecording(stream) {
-        // Create audio blob
-        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-        this.audioChunks = [];
+    async uploadRecording() {
+        // Build blob
+        const mimeType =
+            (this.mediaRecorder && this.mediaRecorder.mimeType) || "audio/webm";
+        const audioBlob = new Blob(this.audioChunks, { type: mimeType });
 
-        // Create form data
+        // Pick a filename extension
+        const ext = mimeType.includes("ogg")
+            ? "ogg"
+            : mimeType.includes("mp4")
+                ? "mp4"
+                : "webm";
+        const filename = `recording.${ext}`;
+
+        // Build multipart form
         const formData = new FormData();
-        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append(this.fieldName, audioBlob, filename);
 
-        // Show spinner while processing
-        this.recordingSpinner.classList.remove('d-none');
-        this.recordingText.textContent = 'Processing audio...';
+        // Upload to backend via your api.js (FormData supported)
+        // NOTE: api.upload returns parsed response if any; we don't need it.
+        await api.upload(this.uploadPath, formData, { auth: this.auth });
+    }
 
-        try {
-            // Send to server
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData
-            });
+    cleanupStream() {
+        if (this.stream) {
+            this.stream.getTracks().forEach((t) => t.stop());
+            this.stream = null;
+        }
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+    }
 
-            const result = await response.json();
+    setRecordingUI() {
+        this.recordingSpinner.classList.add("d-none");
+        this.recordingText.textContent = "Recording...";
+        this.recordButton.innerHTML =
+            '<i class="bi bi-stop-fill" style="font-size: 2rem;"></i>';
+    }
 
-            if (result.ok) {
-                this.transcriptText.textContent = result.transcript;
-                this.transcriptContainer.style.display = 'block';
-                this.flashMessage('Transcription completed successfully!', 'success');
+    setReadyUI() {
+        this.recordingSpinner.classList.add("d-none");
+        this.recordingText.textContent = "Ready to record";
+        this.recordButton.innerHTML =
+            '<i class="bi bi-mic" style="font-size: 2rem;"></i>';
+    }
 
-                // Refresh the dashboard (if needed)
-                if (typeof refreshDashboard === 'function') {
-                    refreshDashboard();
-                }
-            } else {
-                throw new Error('Transcription failed');
+    getSupportedRecorderOptions() {
+        // Try common mime types in order for best compatibility
+        const candidates = [
+            "audio/webm;codecs=opus",
+            "audio/webm",
+            "audio/ogg;codecs=opus",
+            "audio/ogg",
+            "audio/mp4", // some Safari versions
+        ];
+
+        if (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === "function") {
+            for (const mimeType of candidates) {
+                if (MediaRecorder.isTypeSupported(mimeType)) return { mimeType };
             }
-        } catch (error) {
-            console.error('Error:', error);
-            this.flashMessage('Transcription failed. Please try again.', 'danger');
-        } finally {
-            this.recordingSpinner.classList.add('d-none');
-            this.recordingText.textContent = 'Ready to record';
         }
 
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
+        return {}; // let browser decide
     }
 
     flashMessage(message, type) {
-        // Create flash message
-        const alert = document.createElement('div');
+        const alert = document.createElement("div");
         alert.className = `alert alert-${type} alert-dismissible fade show`;
         alert.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
 
-        // Prepend to flash container or parent
-        const flashContainer = this.container.closest('.container') || document.querySelector('.container');
-        if (flashContainer) {
-            flashContainer.prepend(alert);
-        } else {
-            document.body.prepend(alert);
-        }
+        const flashContainer =
+            this.container.closest(".container") || document.querySelector(".container");
+        (flashContainer || document.body).prepend(alert);
     }
 }
-
-// Initialize recorder when DOM is loaded
-document.addEventListener('DOMContentLoaded', function () {
-    // This will be initialized by the modal workflow
-});

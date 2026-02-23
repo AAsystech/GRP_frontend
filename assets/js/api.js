@@ -1,16 +1,28 @@
 // GRP_frontend/assets/js/api.js
 
-const API_BASE_URL = "https://grp-backend.onrender.com";
+const API_BASE_URL =
+    location.hostname === "localhost" || location.hostname === "127.0.0.1"
+        ? "http://localhost:8000"
+        : "https://grp-backend.onrender.com";
 
 function getToken() {
     return localStorage.getItem("grp_access_token");
 }
 
-async function request(path, { method = "GET", body, auth = true, headers = {} } = {}) {
+async function request(
+    path,
+    { method = "GET", body, auth = true, headers = {} } = {}
+) {
+    const isFormData = body instanceof FormData;
+
     const finalHeaders = {
-        "Content-Type": "application/json",
         ...headers,
     };
+
+    // Only set JSON content-type if we're NOT sending FormData
+    if (!isFormData && !finalHeaders["Content-Type"]) {
+        finalHeaders["Content-Type"] = "application/json";
+    }
 
     if (auth) {
         const token = getToken();
@@ -20,10 +32,12 @@ async function request(path, { method = "GET", body, auth = true, headers = {} }
     const res = await fetch(`${API_BASE_URL}${path}`, {
         method,
         headers: finalHeaders,
-        body: body ? JSON.stringify(body) : undefined,
+        body: body
+            ? (isFormData ? body : JSON.stringify(body))
+            : undefined,
     });
 
-    // Try to parse JSON (even on errors, backend often returns JSON detail)
+    // Parse response (try JSON if present)
     let data = null;
     const contentType = res.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
@@ -52,4 +66,8 @@ export const api = {
     post: (path, body, opts = {}) => request(path, { ...opts, method: "POST", body }),
     put: (path, body, opts = {}) => request(path, { ...opts, method: "PUT", body }),
     del: (path, opts = {}) => request(path, { ...opts, method: "DELETE" }),
+
+    // Optional explicit helper for uploads (nice ergonomics)
+    upload: (path, formData, opts = {}) =>
+        request(path, { ...opts, method: "POST", body: formData, headers: { ...(opts.headers || {}) } }),
 };
