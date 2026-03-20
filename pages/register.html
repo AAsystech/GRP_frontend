@@ -109,9 +109,20 @@
             </div>
 
             <div class="col-md-6">
-              <label for="city" class="form-label">City</label>
-              <input type="text" class="form-control form-control-lg" id="city" required placeholder="City"
+              <label for="city" class="form-label">City/Village</label>
+              <input type="text" class="form-control form-control-lg" id="city" required placeholder="City or Village"
                 autocomplete="address-level2" />
+            </div>
+
+            <div class="col-md-6">
+              <label for="subdistrict" class="form-label">Subdistrict (Mandal)</label>
+              <input type="text" class="form-control form-control-lg" id="subdistrict" required
+                placeholder="Subdistrict / Mandal" />
+            </div>
+
+            <div class="col-md-6">
+              <label for="district" class="form-label">District</label>
+              <input type="text" class="form-control form-control-lg" id="district" required placeholder="District" />
             </div>
 
             <div class="col-md-3">
@@ -221,7 +232,6 @@
         return;
       }
 
-      // Build payload that matches your backend RegisterRequest
       const payload = {
         email: (document.getElementById("email")?.value || "").trim().toLowerCase(),
         password,
@@ -230,6 +240,8 @@
         last_name: (document.getElementById("last_name")?.value || "").trim(),
         address_line1: (document.getElementById("address_line1")?.value || "").trim(),
         city: (document.getElementById("city")?.value || "").trim(),
+        subdistrict: (document.getElementById("subdistrict")?.value || "").trim(),
+        district: (document.getElementById("district")?.value || "").trim(),
         state: (document.getElementById("state")?.value || "").trim(),
         postal_code: (document.getElementById("postal_code")?.value || "").trim(),
         country: (document.getElementById("country")?.value || "").trim(),
@@ -240,8 +252,20 @@
         address_line2: (document.getElementById("address_line2")?.value || "").trim() || null,
       };
 
-      // Basic required-field guard (backend also validates)
-      const required = ["email", "password", "first_name", "last_name", "address_line1", "city", "state", "postal_code", "country"];
+      const required = [
+        "email",
+        "password",
+        "first_name",
+        "last_name",
+        "address_line1",
+        "city",
+        "subdistrict",
+        "district",
+        "state",
+        "postal_code",
+        "country"
+      ];
+
       const missing = required.filter((k) => !payload[k]);
       if (missing.length) {
         showError(`Please fill required fields: ${missing.join(", ")}`);
@@ -252,7 +276,6 @@
         btn.disabled = true;
         btn.textContent = "Creating...";
 
-        // IMPORTANT: auth must be false for register
         const data = await api.post("/auth/register", payload, { auth: false });
 
         showSuccess(data?.message || "Registration successful! Redirecting to login...");
@@ -261,7 +284,6 @@
         }, 1200);
 
       } catch (err) {
-        // api.js throws Error(msg) with status/data attached
         showError(err?.message || "Registration failed.");
         console.error("Register error:", err);
       } finally {
