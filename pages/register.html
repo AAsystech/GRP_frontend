@@ -200,6 +200,11 @@
     const successEl = document.getElementById("register-success");
     const btn = document.getElementById("register-submit");
 
+    const stateEl = document.getElementById("state");
+    const districtEl = document.getElementById("district");
+    const subdistrictEl = document.getElementById("subdistrict");
+    const localBodyEl = document.getElementById("local_body");
+
     function showError(msg) {
       errorEl.textContent = msg;
       errorEl.style.display = "block";
@@ -219,6 +224,80 @@
       successEl.textContent = "";
       successEl.style.display = "none";
     }
+
+    function resetSelect(selectEl, placeholder) {
+      selectEl.innerHTML = `<option value="">${placeholder}</option>`;
+      selectEl.disabled = true;
+    }
+
+    function fillSelect(selectEl, items, placeholder) {
+      selectEl.innerHTML = `<option value="">${placeholder}</option>`;
+
+      for (const item of items) {
+        const option = document.createElement("option");
+        option.value = String(item.org_unit_id);
+        option.textContent = item.org_name;
+        option.dataset.name = item.org_name;
+        selectEl.appendChild(option);
+      }
+
+      selectEl.disabled = false;
+    }
+
+    async function loadStates() {
+      try {
+        const states = await api.get("/org/states", { auth: false });
+        fillSelect(stateEl, states || [], "Select state");
+      } catch (err) {
+        console.error("Failed to load states", err);
+        showError("Could not load states.");
+      }
+    }
+
+    stateEl.addEventListener("change", async () => {
+      resetSelect(districtEl, "Select district");
+      resetSelect(subdistrictEl, "Select subdistrict");
+      resetSelect(localBodyEl, "Select local body");
+
+      if (!stateEl.value) return;
+
+      try {
+        const districts = await api.get(`/org/districts?state_id=${encodeURIComponent(stateEl.value)}`, { auth: false });
+        fillSelect(districtEl, districts || [], "Select district");
+      } catch (err) {
+        console.error("Failed to load districts", err);
+        showError("Could not load districts.");
+      }
+    });
+
+    districtEl.addEventListener("change", async () => {
+      resetSelect(subdistrictEl, "Select subdistrict");
+      resetSelect(localBodyEl, "Select local body");
+
+      if (!districtEl.value) return;
+
+      try {
+        const subdistricts = await api.get(`/org/subdistricts?district_id=${encodeURIComponent(districtEl.value)}`, { auth: false });
+        fillSelect(subdistrictEl, subdistricts || [], "Select subdistrict");
+      } catch (err) {
+        console.error("Failed to load subdistricts", err);
+        showError("Could not load subdistricts.");
+      }
+    });
+
+    subdistrictEl.addEventListener("change", async () => {
+      resetSelect(localBodyEl, "Select local body");
+
+      if (!subdistrictEl.value) return;
+
+      try {
+        const localBodies = await api.get(`/org/local-bodies?subdistrict_id=${encodeURIComponent(subdistrictEl.value)}`, { auth: false });
+        fillSelect(localBodyEl, localBodies || [], "Select local body");
+      } catch (err) {
+        console.error("Failed to load local bodies", err);
+        showError("Could not load local bodies.");
+      }
+    });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -240,13 +319,15 @@
         last_name: (document.getElementById("last_name")?.value || "").trim(),
         address_line1: (document.getElementById("address_line1")?.value || "").trim(),
         city: (document.getElementById("city")?.value || "").trim(),
-        sub_district: (document.getElementById("subdistrict")?.value || "").trim(),
-        district: (document.getElementById("district")?.value || "").trim(),
-        state: (document.getElementById("state")?.value || "").trim(),
+
+        state: stateEl.options[stateEl.selectedIndex]?.dataset.name || "",
+        district: districtEl.options[districtEl.selectedIndex]?.dataset.name || "",
+        sub_district: subdistrictEl.options[subdistrictEl.selectedIndex]?.dataset.name || "",
+        local_body: localBodyEl.options[localBodyEl.selectedIndex]?.dataset.name || "",
+
         postal_code: (document.getElementById("postal_code")?.value || "").trim(),
         country: (document.getElementById("country")?.value || "").trim(),
 
-        // optional
         display_name: (document.getElementById("display_name")?.value || "").trim() || null,
         phone: (document.getElementById("phone")?.value || "").trim() || null,
         address_line2: (document.getElementById("address_line2")?.value || "").trim() || null,
@@ -259,9 +340,10 @@
         "last_name",
         "address_line1",
         "city",
-        "subdistrict",
-        "district",
         "state",
+        "district",
+        "sub_district",
+        "local_body",
         "postal_code",
         "country"
       ];
@@ -291,6 +373,8 @@
         btn.textContent = "Create Account";
       }
     });
+
+    document.addEventListener("DOMContentLoaded", loadStates);
   </script>
 
 </body>
