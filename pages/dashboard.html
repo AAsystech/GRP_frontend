@@ -200,6 +200,7 @@
       window.location.href = "login.html";
     });
 
+    // ---- helpers ----
     function escapeHtml(value) {
       return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -209,6 +210,35 @@
         .replaceAll("'", "&#039;");
     }
 
+    // ---- stats ----
+    function renderTicketStats(tickets) {
+      const statValues = document.querySelectorAll(".stat-box-value");
+      if (!statValues || statValues.length < 3) return;
+
+      const newCount = tickets.filter(
+        (t) => (t.status || "").toUpperCase() === "OPEN"
+      ).length;
+
+      const inProgressCount = tickets.filter(
+        (t) =>
+          ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(
+            (t.status || "").toUpperCase()
+          )
+      ).length;
+
+      const resolvedCount = tickets.filter(
+        (t) =>
+          ["RESOLVED", "CLOSED"].includes(
+            (t.status || "").toUpperCase()
+          )
+      ).length;
+
+      statValues[0].textContent = newCount;
+      statValues[1].textContent = inProgressCount;
+      statValues[2].textContent = resolvedCount;
+    }
+
+    // ---- tickets UI ----
     function renderTickets(tickets) {
       const ticketsList = document.getElementById("tickets-list");
       if (!ticketsList) return;
@@ -247,7 +277,10 @@
               <div class="small text-secondary">
                 <div><strong>Priority:</strong> ${escapeHtml(ticket.priority || "-")}</div>
                 <div><strong>Source:</strong> ${escapeHtml(ticket.source_channel || "-")}</div>
-                <div><strong>Created:</strong> ${ticket.created_at ? new Date(ticket.created_at).toLocaleString() : "-"}</div>
+                <div><strong>Created:</strong> ${ticket.created_at
+          ? new Date(ticket.created_at).toLocaleString()
+          : "-"
+        }</div>
               </div>
             </div>
           </div>
@@ -255,14 +288,27 @@
       `).join("");
     }
 
+    // ---- API call ----
     async function loadMyTickets() {
       try {
         const tickets = await api.get("/ai/my-tickets");
+
         console.log("My tickets:", tickets);
+
+        renderTicketStats(tickets);
         renderTickets(tickets);
       } catch (err) {
         console.error("Failed to load tickets:", err);
 
+        // reset stats
+        const statValues = document.querySelectorAll(".stat-box-value");
+        if (statValues.length >= 3) {
+          statValues[0].textContent = "0";
+          statValues[1].textContent = "0";
+          statValues[2].textContent = "0";
+        }
+
+        // show error
         const ticketsList = document.getElementById("tickets-list");
         if (ticketsList) {
           ticketsList.innerHTML = `
@@ -276,6 +322,7 @@
       }
     }
 
+    // ---- init ----
     loadMyTickets();
   </script>
 
