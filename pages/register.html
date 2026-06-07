@@ -296,18 +296,34 @@
     });
 
     subdistrictEl.addEventListener("change", async () => {
-      resetSelect(localBodyEl, "Select local body");
+  resetSelect(localBodyEl, "Select local body");
 
-      if (!subdistrictEl.value) return;
+  if (!subdistrictEl.value) return;
 
-      try {
-        const localBodies = await api.get(`/org/local-bodies?subdistrict_id=${encodeURIComponent(subdistrictEl.value)}`, { auth: false });
-        fillSelect(localBodyEl, localBodies || [], "Select local body");
-      } catch (err) {
-        console.error("Failed to load local bodies", err);
-        showError("Could not load local bodies.");
-      }
-    });
+  try {
+    const localBodies = await api.get(
+      `/org/local-bodies?subdistrict_id=${encodeURIComponent(subdistrictEl.value)}`,
+      { auth: false }
+    );
+    console.log("localBodies response:", localBodies);
+    if (localBodies && localBodies.length > 0) {
+      fillSelect(localBodyEl, localBodies, "Select local body");
+    } else {
+      localBodyEl.innerHTML = `
+        <option value="N/A" data-name="N/A">N/A</option>
+      `;
+      localBodyEl.disabled = false;
+    }
+
+  } catch (err) {
+    console.error("Failed to load local bodies", err);
+
+    localBodyEl.innerHTML = `
+      <option value="N/A" data-name="N/A">N/A</option>
+    `;
+    localBodyEl.disabled = false;
+  }
+});
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
