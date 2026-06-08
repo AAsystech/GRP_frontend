@@ -305,26 +305,13 @@
       `/org/local-bodies?subdistrict_id=${encodeURIComponent(subdistrictEl.value)}`,
       { auth: false }
     );
-    console.log("localBodies response:", localBodies);
-    if (localBodies && localBodies.length > 0) {
-      fillSelect(localBodyEl, localBodies, "Select local body");
-    } else {
-      localBodyEl.innerHTML = `
-        <option value="N/A" data-name="N/A">N/A</option>
-      `;
-      localBodyEl.disabled = false;
-    }
 
+    fillSelect(localBodyEl, localBodies || [], "Select local body");
   } catch (err) {
     console.error("Failed to load local bodies", err);
-
-    localBodyEl.innerHTML = `
-      <option value="N/A" data-name="N/A">N/A</option>
-    `;
-    localBodyEl.disabled = false;
+    showError("Could not load local bodies.");
   }
 });
-
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       hideError();
