@@ -1,5 +1,5 @@
 // GRP_frontend/assets/js/auth.js
-import { api } from "./api.js";
+import { api, wakeBackend, onBackendStatusChange } from "./api.js";
 
 const TOKEN_KEY = "grp_access_token";
 const USER_KEY = "grp_user";
@@ -22,11 +22,8 @@ export function clearAuth() {
 }
 
 export async function login(email, password) {
-    // backend expects JSON: { email, password }
     const data = await api.post("/auth/login", { email, password }, { auth: false });
 
-    // expected response:
-    // { access_token, token_type, user, roles, org_mappings }
     if (!data?.access_token) throw new Error("Login succeeded but no token returned.");
 
     setToken(data.access_token);
@@ -57,10 +54,43 @@ function hideError() {
     el.style.display = "none";
 }
 
-// Auto-wire the login form if present on the page
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("login-form");
     if (!form) return;
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const banner = document.getElementById("backend-status-banner");
+
+    let isSubmitting = false;
+
+    function updateLoginUI(status) {
+        if (banner) {
+            if (status.waking) {
+                banner.className = "alert alert-info mb-3";
+                banner.textContent = "Starting services. First load may take up to 60 seconds.";
+            } else if (status.failed) {
+                banner.className = "alert alert-warning mb-3";
+                banner.textContent = "Server is taking longer than expected. Please wait or refresh the page.";
+            } else {
+                banner.className = "alert alert-info d-none mb-3";
+            }
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = status.waking || isSubmitting;
+
+            if (status.waking) {
+                submitBtn.textContent = "Starting Server...";
+            } else if (isSubmitting) {
+                submitBtn.textContent = "Please wait...";
+            } else {
+                submitBtn.textContent = "Login";
+            }
+        }
+    }
+
+    onBackendStatusChange(updateLoginUI);
+    wakeBackend();
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -75,13 +105,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         try {
-            await login(email, password);
+            isSubmitting = true;
+            updateLoginUI({ waking: false, failed: false });
 
-            // redirect after success
+            await login(email, password);
             window.location.href = "dashboard.html";
         } catch (err) {
             showError(err?.message || "Login failed.");
             console.error("Login error:", err);
+        } finally {
+            isSubmitting = false;
+            updateLoginUI({ waking: false, failed: false });
         }
     });
 });
