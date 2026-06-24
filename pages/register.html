@@ -6,16 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Register | GRP</title>
 
-  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-
-  <!-- Your custom theme -->
   <link rel="stylesheet" href="../assets/css/styles.css" />
 </head>
 
 <body class="d-flex flex-column min-vh-100">
 
-  <!-- Top Navbar -->
   <nav class="navbar navbar-expand-lg border-bottom" style="background:#1e1e1e;">
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-2 text-light" href="home.html">
@@ -39,7 +35,6 @@
     </div>
   </nav>
 
-  <!-- Centered Register Card -->
   <main class="flex-grow-1 d-flex align-items-center justify-content-center py-5">
     <div class="auth-container w-100 px-3">
       <div class="card p-4 p-md-5 border-gradient mx-auto" style="max-width: 780px;">
@@ -48,9 +43,13 @@
           <p class="text-muted mb-0">Join our speech transcription platform</p>
         </div>
 
+        <div id="backend-status-banner" class="alert alert-info d-none mb-3">
+          Starting services. First load may take up to 60 seconds.
+        </div>
+
         <form id="register-form" class="transition" novalidate>
-          <!-- Profile -->
           <h5 class="mb-3">Profile</h5>
+
           <div class="row g-3">
             <div class="col-12">
               <label for="display_name" class="form-label">Display name <span
@@ -74,8 +73,8 @@
 
           <hr class="my-4" />
 
-          <!-- Contact -->
           <h5 class="mb-3">Contact</h5>
+
           <div class="row g-3">
             <div class="col-md-6">
               <label for="email" class="form-label">Email</label>
@@ -92,8 +91,8 @@
 
           <hr class="my-4" />
 
-          <!-- Address -->
           <h5 class="mb-3">Address</h5>
+
           <div class="row g-3">
             <div class="col-12">
               <label for="address_line1" class="form-label">Address line 1</label>
@@ -141,6 +140,7 @@
                 <option value="">Select local body</option>
               </select>
             </div>
+
             <div class="col-md-6">
               <label for="postal_code" class="form-label">Postal code</label>
               <input type="text" class="form-control form-control-lg" id="postal_code" required
@@ -156,8 +156,8 @@
 
           <hr class="my-4" />
 
-          <!-- Security -->
           <h5 class="mb-3">Security</h5>
+
           <div class="row g-3">
             <div class="col-md-6">
               <label for="password" class="form-label">Password</label>
@@ -191,29 +191,59 @@
     </div>
   </main>
 
-  <!-- Footer -->
   <footer class="border-top py-3 mt-auto" style="background:#1e1e1e;">
     <div class="container text-center text-light small">
       GRP - Speech to Text Transcription © 2026
     </div>
   </footer>
 
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- IMPORTANT: This page uses api.js like your login does -->
   <script type="module">
-    import { api } from "../assets/js/api.js";
+    import { api, wakeBackend, onBackendStatusChange } from "../assets/js/api.js";
 
     const form = document.getElementById("register-form");
     const errorEl = document.getElementById("register-error");
     const successEl = document.getElementById("register-success");
     const btn = document.getElementById("register-submit");
+    const banner = document.getElementById("backend-status-banner");
 
     const stateEl = document.getElementById("state");
     const districtEl = document.getElementById("district");
     const subdistrictEl = document.getElementById("subdistrict");
     const localBodyEl = document.getElementById("local_body");
+
+    let backendWaking = true;
+    let isSubmitting = false;
+
+    function updateRegisterUI(status) {
+      backendWaking = status.waking;
+
+      if (banner) {
+        if (status.waking) {
+          banner.className = "alert alert-info mb-3";
+          banner.textContent = "Starting services. First load may take up to 60 seconds.";
+        } else if (status.failed) {
+          banner.className = "alert alert-warning mb-3";
+          banner.textContent = "Server is taking longer than expected. Please wait or refresh the page.";
+        } else {
+          banner.className = "alert alert-info d-none mb-3";
+        }
+      }
+
+      btn.disabled = status.waking || isSubmitting;
+
+      if (status.waking) {
+        btn.textContent = "Starting Server...";
+      } else if (isSubmitting) {
+        btn.textContent = "Please wait...";
+      } else {
+        btn.textContent = "Create Account";
+      }
+    }
+
+    onBackendStatusChange(updateRegisterUI);
+    wakeBackend();
 
     function showError(msg) {
       errorEl.textContent = msg;
@@ -314,8 +344,14 @@
       hideError();
       hideSuccess();
 
+      if (backendWaking) {
+        showError("Server is starting. Please wait a few seconds.");
+        return;
+      }
+
       const password = document.getElementById("password")?.value || "";
       const confirm = document.getElementById("confirm_password")?.value || "";
+
       if (password !== confirm) {
         showError("Passwords do not match.");
         return;
@@ -359,18 +395,21 @@
       ];
 
       const missing = required.filter((k) => !payload[k]);
+
       if (missing.length) {
         showError(`Please fill required fields: ${missing.join(", ")}`);
         return;
       }
 
       try {
+        isSubmitting = true;
         btn.disabled = true;
-        btn.textContent = "Creating...";
+        btn.textContent = "Please wait...";
 
         const data = await api.post("/auth/register", payload, { auth: false });
 
         showSuccess(data?.message || "Registration successful! Redirecting to login...");
+
         setTimeout(() => {
           window.location.href = "login.html";
         }, 1200);
@@ -379,8 +418,9 @@
         showError(err?.message || "Registration failed.");
         console.error("Register error:", err);
       } finally {
-        btn.disabled = false;
-        btn.textContent = "Create Account";
+        isSubmitting = false;
+        btn.disabled = backendWaking;
+        btn.textContent = backendWaking ? "Starting Server..." : "Create Account";
       }
     });
 
